@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 本地 LLM 選型指南</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Lexend:wght@300;400;500;600&family=Inconsolata:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090e;--surface:rgba(255,255,255,.055);--surface2:rgba(255,255,255,.09);
+  --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.22);
+  --mint:#6effa8;--mint2:#3deda0;--cyan:#5de8ff;--amber:#ffc44d;
+  --coral:#ff8070;--purple:#c4aaff;--gold:#ffd980;
+  --text:#eceef6;--text2:#b8bcce;--text3:#9298b2;
+  --r:10px;--r2:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Lexend',sans-serif;font-size:19px;line-height:1.9;
+  background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased}
+body.hi{--bg:#000;--surface:rgba(255,255,255,.09);--surface2:rgba(255,255,255,.14);
+  --border:rgba(255,255,255,.2);--border2:rgba(255,255,255,.36);
+  --text:#fff;--text2:#d2d5e2;--text3:#b0b5c8}
+body.big{font-size:21px}
+body.big .m-name{font-size:23px}
+body.big .m-note,body.big td{font-size:19px}
+
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(94,255,160,.016) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(94,255,160,.016) 1px,transparent 1px);
+  background-size:56px 56px}
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 55% 35% at 15% 8%,rgba(94,255,160,.055) 0%,transparent 70%),
+    radial-gradient(ellipse 45% 30% at 88% 88%,rgba(93,232,255,.04) 0%,transparent 70%)}
+
+.wrap{max-width:1160px;margin:0 auto;padding:0 40px;position:relative;z-index:1}
+
+/* A11Y */
+.a11y-bar{display:flex;justify-content:flex-end;gap:8px;padding:14px 0 0}
+.a11y-btn{background:var(--surface);border:1px solid var(--border);border-radius:99px;
+  padding:5px 14px;cursor:pointer;font-family:'Lexend',sans-serif;font-size:13px;
+  color:var(--text2);transition:all .15s}
+.a11y-btn:hover{border-color:var(--border2);color:var(--text)}
+.a11y-btn.on{border-color:var(--amber);color:var(--amber);background:rgba(255,196,77,.09)}
+
+/* HEADER */
+header{padding:52px 0 44px;text-align:center;border-bottom:1px solid var(--border)}
+.badge{display:inline-flex;align-items:center;gap:8px;font-family:'Inconsolata',monospace;
+  font-size:13px;letter-spacing:.07em;color:var(--mint2);text-transform:uppercase;
+  border:1px solid rgba(94,255,160,.28);border-radius:99px;padding:6px 16px;
+  margin-bottom:24px;background:rgba(94,255,160,.07)}
+.badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--mint2);
+  animation:blink 2.4s infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-family:'Orbitron',monospace;font-weight:900;font-size:clamp(1.9rem,5vw,3rem);
+  line-height:1.12;background:linear-gradient(135deg,#fff 0%,var(--mint) 55%,var(--cyan) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:14px}
+.header-sub{font-size:17px;color:var(--text2);max-width:560px;margin:0 auto 30px;
+  font-weight:300;line-height:1.85}
+.stats-row{display:flex;justify-content:center;gap:40px;flex-wrap:wrap}
+.stat-num{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--mint)}
+.stat-label{font-size:13px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;
+  margin-top:3px;font-weight:300}
+
+/* SECTION */
+.section{padding:52px 0;border-bottom:1px solid var(--border)}
+.sec-title{font-size:13px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--mint2);margin-bottom:24px}
+
+/* STEP LABELS */
+.step-label{font-family:'Inconsolata',monospace;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:14px;
+  display:flex;align-items:center;gap:10px}
+.step-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.sn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--surface2);border:1px solid var(--border2);
+  font-size:12px;font-weight:600;color:var(--text2);flex-shrink:0;transition:all .2s}
+.sn.done{background:rgba(61,237,160,.15);border-color:var(--mint2);color:var(--mint2)}
+
+/* TYPE GRID */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:36px}
+.type-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
+  padding:24px 20px;cursor:pointer;text-align:left;transition:all .18s;
+  position:relative;overflow:hidden}
+.type-btn:focus-visible{outline:2px solid var(--mint2);outline-offset:2px}
+.type-btn::before{content:'';position:absolute;inset:0;opacity:0;
+  background:linear-gradient(135deg,rgba(94,255,160,.09),rgba(56,232,255,.06));
+  transition:opacity .18s}
+.type-btn:hover{border-color:var(--border2);transform:translateY(-2px)}
+.type-btn:hover::before{opacity:1}
+.type-btn.sel{border-color:var(--mint2);background:rgba(61,237,160,.07);
+  box-shadow:0 0 0 1px rgba(61,237,160,.18),0 6px 24px rgba(61,237,160,.08)}
+.type-btn.sel::before{opacity:1}
+.type-icon{font-size:30px;margin-bottom:12px;line-height:1}
+.type-name{font-size:16px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:5px}
+.type-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;
+  font-family:'Inconsolata',monospace;margin-bottom:8px}
+.tb-nv{background:rgba(118,185,0,.14);color:#8fd400;border:1px solid rgba(118,185,0,.3)}
+.tb-amd{background:rgba(255,110,66,.14);color:#ff8c66;border:1px solid rgba(255,110,66,.3)}
+.tb-mac{background:rgba(93,232,255,.12);color:var(--cyan);border:1px solid rgba(93,232,255,.28)}
+.type-desc{font-size:13px;color:var(--text3);font-weight:300;line-height:1.65}
+
+/* MEMORY AREA */
+.mem-area{display:none;margin-bottom:36px}
+.mem-area.show{display:block}
+.mem-intro{font-size:15px;color:var(--text2);margin-bottom:20px;font-weight:300;line-height:1.85}
+.mem-display{display:flex;align-items:baseline;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+.mem-val{font-family:'Orbitron',monospace;font-size:36px;font-weight:700;color:var(--mint)}
+.mem-unit{font-family:'Inconsolata',monospace;font-size:15px;color:var(--text3)}
+.mem-ctx{font-size:14px;color:var(--text2);font-weight:300;padding:4px 12px;
+  background:var(--surface);border:1px solid var(--border);border-radius:99px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;
+  border-radius:3px;outline:none;cursor:pointer;background:rgba(255,255,255,.09)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:24px;height:24px;border-radius:50%;background:var(--mint2);
+  border:2px solid var(--bg);box-shadow:0 0 0 2px rgba(61,237,160,.35);
+  transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.mem-labels{display:flex;justify-content:space-between;margin-top:10px;
+  font-family:'Inconsolata',monospace;font-size:12px;color:var(--text3)}
+
+/* RESULT */
+.result-none{padding:36px 0;text-align:center;font-size:15px;color:var(--text3);
+  font-weight:300;line-height:1.85}
+.result-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.r-chip{font-family:'Inconsolata',monospace;font-size:14px;background:rgba(255,196,77,.1);
+  color:var(--amber);border:1px solid rgba(255,196,77,.3);border-radius:99px;padding:5px 16px}
+.r-label{font-size:15px;color:var(--text2);font-weight:300}
+.info-box{display:none;margin-bottom:14px;border-radius:var(--r);padding:12px 16px;
+  font-size:14px;line-height:1.75;font-weight:300}
+.info-box.show{display:block}
+.info-warn{color:#ffb09e;background:rgba(255,107,91,.09);border:1px solid rgba(255,107,91,.26);
+  border-left:3px solid var(--coral)}
+.info-tip{color:#a0f0c8;background:rgba(61,237,160,.07);border:1px solid rgba(61,237,160,.22);
+  border-left:3px solid var(--mint2)}
+
+/* MODEL CARDS */
+.cards{display:grid;gap:16px}
+.m-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
+  padding:26px 28px;transition:all .2s;position:relative;overflow:hidden;
+  animation:fadeIn .28s ease forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.m-card::after{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  border-radius:4px 0 0 4px;background:var(--border2)}
+.m-card.r1::after{background:var(--mint2);box-shadow:0 0 10px rgba(61,237,160,.4)}
+.m-card.r2::after{background:var(--cyan)}
+.m-card.r3::after{background:var(--purple)}
+.m-card:hover{border-color:var(--border2);background:var(--surface2);transform:translateX(2px)}
+.mc-top{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}
+.mc-rank{font-size:12px;font-weight:600;color:var(--mint);letter-spacing:.05em;margin-bottom:6px}
+.mc-rank.gold{color:var(--gold)}
+.m-name{font-size:18px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.3}
+.m-sub{font-family:'Inconsolata',monospace;font-size:13px;font-weight:500}
+.mc-right{text-align:right}
+.mc-vram{font-family:'Inconsolata',monospace;font-size:14px;color:var(--text2);margin-bottom:8px}
+.score-row{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.score-bg{width:72px;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.score-fill{height:5px;border-radius:3px}
+.score-val{font-family:'Inconsolata',monospace;font-size:14px;font-weight:500;
+  color:var(--text);min-width:32px;text-align:right}
+.m-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.tag{font-size:13px;padding:3px 10px;border-radius:99px;font-family:'Inconsolata',monospace;font-weight:500}
+.tg{background:rgba(94,255,160,.1);color:var(--mint2);border:1px solid rgba(94,255,160,.22)}
+.tc{background:rgba(93,232,255,.1);color:var(--cyan);border:1px solid rgba(93,232,255,.22)}
+.ta{background:rgba(255,196,77,.1);color:var(--amber);border:1px solid rgba(255,196,77,.22)}
+.tp{background:rgba(196,170,255,.1);color:var(--purple);border:1px solid rgba(196,170,255,.22)}
+.m-note{font-size:15px;color:var(--text2);line-height:1.9;margin-top:20px;padding-top:18px;
+  border-top:1px solid var(--border);font-weight:300}
+.top-glow{position:absolute;top:-40px;right:-40px;width:110px;height:110px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,217,128,.07),transparent 70%);pointer-events:none}
+
+/* VENDOR COLOURS */
+.vs-google  .m-sub{color:#4ecb8a}
+.vs-alibaba .m-sub{color:#ff9f6a}
+.vs-deepseek .m-sub{color:#5de8ff}
+.vs-ms      .m-sub{color:#7ab8f5}
+.vs-google  .m-card-vendor{background:rgba(78,203,138,.08);border-color:rgba(78,203,138,.25)}
+.vs-alibaba .m-card-vendor{background:rgba(255,159,106,.08);border-color:rgba(255,159,106,.25)}
+.vs-deepseek .m-card-vendor{background:rgba(93,232,255,.08);border-color:rgba(93,232,255,.25)}
+.vs-ms      .m-card-vendor{background:rgba(122,184,245,.08);border-color:rgba(122,184,245,.25)}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:var(--r2);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+thead th{font-family:'Inconsolata',monospace;font-size:12px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text3);font-weight:500;padding:14px 16px;
+  text-align:left;white-space:nowrap;background:rgba(255,255,255,.03);
+  border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface)}
+td{padding:13px 16px;vertical-align:middle}
+.td-name{font-weight:500;color:var(--text);font-size:14px}
+.td-sub{font-size:12px;color:var(--text3);font-family:'Inconsolata',monospace;margin-top:2px}
+.td-mono{font-family:'Inconsolata',monospace;color:var(--text2);font-size:13px}
+.td-vram{font-family:'Inconsolata',monospace;color:var(--amber);font-size:13px;
+  white-space:nowrap;font-weight:500}
+.td-score{font-family:'Inconsolata',monospace;font-weight:700;font-size:14px}
+.tier-pill{font-size:12px;padding:3px 10px;border-radius:99px;white-space:nowrap;
+  font-family:'Inconsolata',monospace;font-weight:500}
+.tpa{background:rgba(94,255,160,.12);color:var(--mint2);border:1px solid rgba(94,255,160,.28)}
+.tpb{background:rgba(93,232,255,.1);color:var(--cyan);border:1px solid rgba(93,232,255,.25)}
+.tpc{background:rgba(196,170,255,.1);color:var(--purple);border:1px solid rgba(196,170,255,.25)}
+.tpd{background:rgba(255,196,77,.08);color:var(--amber);border:1px solid rgba(255,196,77,.22)}
+
+/* ── DEEP DIVE SECTION ── */
+.deep-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(480px,1fr))}
+.deep-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
+  padding:28px 28px;position:relative;overflow:hidden}
+.deep-card-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px;
+  display:flex;align-items:center;gap:10px}
+.deep-card-title .icon{font-size:20px;line-height:1;flex-shrink:0}
+.deep-card p{font-size:15px;color:var(--text2);line-height:1.9;font-weight:300}
+.deep-card p+p{margin-top:10px}
+.deep-card strong{color:var(--text);font-weight:500}
+.deep-card .accent{color:var(--mint2)}
+.deep-card .warn-text{color:var(--coral)}
+.deep-card .amber-text{color:var(--amber)}
+.formula-box{
+  background:rgba(94,255,160,.06);border:1px solid rgba(94,255,160,.2);
+  border-radius:var(--r);padding:16px 18px;margin:16px 0;
+  font-family:'Inconsolata',monospace;font-size:14px;color:var(--mint);
+  line-height:1.8}
+.formula-box .comment{color:var(--text3);font-size:13px}
+.code-block{
+  background:rgba(0,0,0,.35);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px 18px;margin:14px 0;
+  font-family:'Inconsolata',monospace;font-size:13px;color:var(--cyan);
+  line-height:1.9;overflow-x:auto;white-space:pre}
+.code-block .cmd{color:var(--mint2)}
+.code-block .flag{color:var(--amber)}
+.code-block .val{color:var(--purple)}
+.code-block .comment{color:var(--text3)}
+.deep-table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
+.deep-table th{font-family:'Inconsolata',monospace;font-size:12px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3);font-weight:500;
+  padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.deep-table td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.05);
+  font-size:14px;vertical-align:top}
+.deep-table td:first-child{color:var(--text);font-weight:500}
+.deep-table tr:last-child td{border-bottom:none}
+.pill-sm{font-size:12px;padding:2px 8px;border-radius:99px;font-family:'Inconsolata',monospace;
+  font-weight:500;white-space:nowrap;display:inline-block}
+.ps-g{background:rgba(94,255,160,.1);color:var(--mint2);border:1px solid rgba(94,255,160,.2)}
+.ps-r{background:rgba(255,128,112,.1);color:var(--coral);border:1px solid rgba(255,128,112,.2)}
+.ps-a{background:rgba(255,196,77,.1);color:var(--amber);border:1px solid rgba(255,196,77,.2)}
+.ps-p{background:rgba(196,170,255,.1);color:var(--purple);border:1px solid rgba(196,170,255,.2)}
+.divider-line{height:1px;background:var(--border);margin:20px 0}
+.callout{
+  border-left:3px solid var(--mint2);padding:14px 18px;
+  background:rgba(61,237,160,.06);border-radius:0 var(--r) var(--r) 0;
+  font-size:14px;color:var(--text2);line-height:1.85;margin:16px 0}
+.callout.warn{border-left-color:var(--coral);background:rgba(255,128,112,.06)}
+.callout.amber{border-left-color:var(--amber);background:rgba(255,196,77,.06)}
+.callout strong{color:var(--text);font-weight:500}
+.badge-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+footer{padding:48px 0;text-align:center;font-size:14px;color:var(--text3);
+  border-top:1px solid var(--border);line-height:1.9;font-family:'Inconsolata',monospace}
+footer a{color:var(--mint2);text-decoration:underline}
+footer a:hover{color:var(--mint)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:640px){
+  .type-grid{grid-template-columns:1fr}
+  .deep-grid{grid-template-columns:1fr}
+  .mc-top{grid-template-columns:1fr}
+  .mc-right{text-align:left}
+  .score-row{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="wrap">
+
+<div class="a11y-bar">
+  <button class="a11y-btn" id="btn-hi"  onclick="tog('hi','btn-hi')">⬛ 高對比</button>
+  <button class="a11y-btn" id="btn-big" onclick="tog('big','btn-big')">Aa 放大字</button>
+</div>
+
+<header>
+  <div class="badge">已驗證至 2026.04.13</div>
+  <h1>本地 LLM 選型指南</h1>
+  <p class="header-sub">選擇主機類型與記憶體大小，立即找到最適合你的開源模型</p>
+  <div class="stats-row">
+    <div class="stat-item"><div class="stat-num">11</div><div class="stat-label">精選模型</div></div>
+    <div class="stat-item"><div class="stat-num">3</div><div class="stat-label">主機類型</div></div>
+    <div class="stat-item"><div class="stat-num">7</div><div class="stat-label">記憶體級距</div></div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="sec-title">⬡ 選擇你的硬體</div>
+
+  <!-- STEP 1 -->
+  <div class="step-label"><span class="sn" id="sn1">1</span>主機類型</div>
+  <div class="type-grid" id="type-grid"></div>
+
+  <!-- STEP 2 -->
+  <div class="step-label"><span class="sn" id="sn2">2</span><span id="step2-label">記憶體大小</span></div>
+  <div class="mem-area" id="mem-area">
+    <p class="mem-intro" id="mem-intro">拖動滑桿選擇記憶體容量。</p>
+    <div class="mem-display">
+      <span class="mem-val" id="mem-val">8</span>
+      <span class="mem-unit" id="mem-unit">GB VRAM</span>
+      <span class="mem-ctx" id="mem-ctx"></span>
+    </div>
+    <input type="range" id="mem-slider" min="0" max="5" step="1" value="1" oninput="onSlide()">
+    <div class="mem-labels" id="mem-labels"></div>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-area" style="margin-top:32px">
+    <div class="result-none">請先選擇主機類型，再拖動滑桿設定記憶體大小。</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="sec-title">⬡ 完整規格對照表</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>模型</th><th>架構</th><th>參數</th>
+        <th>最低記憶體</th><th>Context</th><th>授權</th>
+        <th>效能分</th><th>分層</th>
+      </tr></thead>
+      <tbody id="full-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ── DEEP DIVE ──────────────────────────────────────────── -->
+<section class="section">
+  <div class="sec-title">⬡ 深度解析：記憶體管理原理</div>
+
+  <div class="deep-grid">
+
+    <!-- 1 三桶模型 -->
+    <div class="deep-card" style="grid-column:1/-1">
+      <div class="deep-card-title"><span class="icon">🪣</span>VRAM 三桶模型：你的記憶體去了哪裡</div>
+      <div class="formula-box">
+        VRAM 總佔用 = 模型權重 + KV Cache + 執行期開銷
+        <br><span class="comment">─────────────────────────────────────────────────────────────</span>
+        <br>模型權重  ≈ 參數量（B）× 量化位元 ÷ 8  （GB）
+        <br>KV Cache ≈ 2 × 層數 × KV頭數 × 頭維度 × 上下文長度 × 位元組
+        <br>執行期    ≈ CUDA context 0.3–0.5 GB  +  activation 0.2–0.5 GB
+      </div>
+      <p>以 Qwen 3.5 9B Q4_K_M 為例：權重約 <strong>5.8 GB</strong>，在 8K ctx 下 KV Cache 約 <strong>0.6 GB</strong>，執行期 <strong>~0.5 GB</strong>，合計 <strong>≈ 7 GB</strong>，恰好能在 8GB 顯卡上執行。但若你把 ctx 拉到 32K，KV Cache 膨脹至 <strong>2–3 GB</strong>，就會溢出導致崩潰。<span class="amber-text"><strong>Context 長度是被最多人忽視的 VRAM 殺手。</strong></span></p>
+    </div>
+
+    <!-- 2 MoE 真實行為 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">⚠️</span>MoE 常見誤解：節省的是算力，不是記憶體</div>
+      <p><strong class="warn-text">錯誤觀念：</strong>「MoE 每次只用 3B 參數，所以只需要 3B 的 VRAM。」</p>
+      <p><strong class="accent">正確理解：</strong>路由器在決定啟用哪個專家前，必須能存取<strong>全部專家</strong>的權重。Qwen 3.5 35B-A3B 雖然每次只活化 3B，但所有 35B 的權重都必須載入記憶體（需約 <strong>21 GB</strong>）。</p>
+      <div class="callout">MoE 的優勢是<strong>推論速度</strong>（每 token 計算量等同 3B）與<strong>知識容量</strong>（35B 的知識庫），而非節省記憶體。如果你的 VRAM 夠大，MoE 讓你用 8B 的速度得到 35B 的品質。</div>
+      <div class="divider-line"></div>
+      <p><strong>🆕 MoE 的救星：llama.cpp --n-cpu-moe</strong></p>
+      <p>當 VRAM 不足以載入全部專家時，可以把「路由專家 FFN 層」卸載到 CPU RAM，只保留注意力層（Attention）在 GPU。速度約 <strong>3–8 tokens/s</strong>，比純 CPU 快 3–5 倍，但比全 GPU 慢許多。</p>
+      <div class="code-block"><span class="comment"># 把部分 MoE 專家層卸載到 CPU（適合 Qwen3.5-35B 在 16GB 顯卡）</span>
+<span class="cmd">llama-server</span> <span class="flag">--model</span> <span class="val">qwen3.5-35b-a3b.gguf</span> \
+  <span class="flag">--n-gpu-layers</span> <span class="val">99</span> \  <span class="comment"># 注意力層全上 GPU</span>
+  <span class="flag">--n-cpu-moe</span> <span class="val">20</span> \   <span class="comment"># 20 個 FFN 專家層卸到 CPU</span>
+  <span class="flag">-c</span> <span class="val">8192</span></div>
+    </div>
+
+    <!-- 3 KV Cache 管理 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">📦</span>KV Cache 壓縮：三層策略</div>
+      <table class="deep-table">
+        <tr><th>策略</th><th>效果</th><th>代價</th></tr>
+        <tr>
+          <td>GQA<br><span style="font-size:11px;color:var(--text3)">模型設計層</span></td>
+          <td>減少 50–75%<br><span class="pill-sm ps-g">Qwen 3.5 / Gemma 4 皆有</span></td>
+          <td>無（已內建）</td>
+        </tr>
+        <tr>
+          <td>KV Q8_0<br><span style="font-size:11px;color:var(--text3)">--cache-type-k q8_0</span></td>
+          <td>再減 50%<br>品質幾乎無損</td>
+          <td>極小</td>
+        </tr>
+        <tr>
+          <td>KV Q4_0<br><span style="font-size:11px;color:var(--text3)">--cache-type-k q4_0</span></td>
+          <td>再減 75%<br>組合可達 12.5%</td>
+          <td>複雜推理略降<br><span class="pill-sm ps-r">不建議 8B 以下</span></td>
+        </tr>
+        <tr>
+          <td>TurboQuant<br><span style="font-size:11px;color:var(--text3)">🆕 2026.03 ICLR</span></td>
+          <td>壓縮 6×<br>3-bit 儲存</td>
+          <td>正在整合至 llama.cpp<br><span class="pill-sm ps-a">尚未正式釋出</span></td>
+        </tr>
+      </table>
+      <div class="callout amber"><strong>實際範例：</strong> Llama 3.1 8B（GQA 4x）+ KV Q8_0，32K context 的 KV Cache 從 16 GB 降至 <strong>2 GB</strong>，讓 8GB 顯卡也能跑長上下文。</div>
+    </div>
+
+    <!-- 4 分流速度代價 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">⚡</span>CPU 分流的速度代價</div>
+      <p>把層卸載到 CPU RAM 會造成<strong class="warn-text">嚴重速度損失</strong>，原因是 PCIe 頻寬瓶頸（PCIe 4.0 約 64 GB/s，遠低於 GDDR6X 的 1 TB/s）。</p>
+      <table class="deep-table">
+        <tr><th>情境</th><th>速度</th></tr>
+        <tr><td>全部層在 GPU</td><td><span class="accent">40–200+ tokens/s</span></td></tr>
+        <tr><td>75% 在 GPU（部分分流）</td><td>~8–15 tokens/s</td></tr>
+        <tr><td>MoE FFN 卸到 CPU（--n-cpu-moe）</td><td>~3–8 tokens/s</td></tr>
+        <tr><td>純 CPU 執行</td><td>2–6 tokens/s</td></tr>
+      </table>
+      <div class="callout warn"><strong>RTX 50 系 Blackwell 例外：</strong>改良的記憶體子系統讓部分分流的速度懲罰減少 <strong>30–40%</strong>，RTX 5090 在部分分流場景下明顯優於 4090。</div>
+      <div class="callout"><strong>原則：</strong>選一個完全裝得進 VRAM 的模型，永遠比強迫塞一個超過 VRAM 的模型更好用。</div>
+    </div>
+
+    <!-- 5 Apple Silicon 特殊規則 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">🍎</span>Apple Silicon 特殊規則</div>
+      <p>Mac 統一記憶體讓 CPU 與 GPU 共用同一記憶體池，優勢是<strong>同預算可購得更大容量</strong>（如 Mac Mini M4 Pro 48GB 售價遠低於同等 VRAM 的獨顯工作站）。但同等 GB 數字下，Mac 可用空間<strong>比獨顯少</strong>（需扣除 35% 系統開銷），以下是關鍵規則：</p>
+      <div class="formula-box">
+        可用模型記憶體 ≈ 統一記憶體 × 60–70%
+        <br><span class="comment">─────────────────────────────────────────</span>
+        <br>16 GB → 約 10–11 GB 可用
+        <br>24 GB → 約 14–17 GB 可用
+        <br>48 GB → 約 29–34 GB 可用
+      </div>
+      <p>其餘 30–40% 由 macOS、KV Cache、推論執行期佔用。超過此限制會觸發磁碟 swap，速度驟降至 &lt;1 tokens/s。</p>
+      <div class="divider-line"></div>
+      <p><strong>🆕 Ollama 0.19 MLX 後端（2026.03）</strong></p>
+      <p>Ollama 0.19 加入 MLX 原生後端，在 32GB+ Mac 上 decode 速度提升 <strong>約 93%</strong>（prefill 1154→1810 tokens/s，decode 58→112 tokens/s）。需 32GB 以上才啟用。</p>
+      <div class="badge-row">
+        <span class="pill-sm ps-g">GGUF → Ollama / llama.cpp</span>
+        <span class="pill-sm ps-a">MLX → mlx-lm / Ollama 0.19+</span>
+        <span class="pill-sm ps-r">AWQ/GPTQ → 不支援 Apple Silicon</span>
+      </div>
+      <p style="margin-top:10px">M5 晶片在 MLX 下 TTFT 比 M4 快 <strong>4 倍</strong>（具備 Neural Accelerator 矩陣乘法單元）；token 生成速度受記憶體頻寬限制（M4: 120 GB/s → M5: 153 GB/s，快 28%）。</p>
+    </div>
+
+    <!-- 6 AMD 注意事項 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">🔴</span>AMD 顯卡：能跑但有坑</div>
+      <p>AMD RX 6000/7000/9000 系列透過 ROCm 支援本地 LLM，但有幾個重要限制：</p>
+      <table class="deep-table">
+        <tr><th>項目</th><th>狀況</th></tr>
+        <tr><td>基本推論</td><td><span class="pill-sm ps-g">可用</span> Ollama / llama.cpp</td></tr>
+        <tr><td>速度 vs NVIDIA</td><td><span class="pill-sm ps-a">略慢</span> 同 VRAM 約慢 10–30%</td></tr>
+        <tr><td>NVFP4 量化</td><td><span class="pill-sm ps-r">不支援</span> 僅 NVIDIA Blackwell</span></td></tr>
+        <tr><td>AWQ / GPTQ</td><td><span class="pill-sm ps-a">部分支援</span> 需 ROCm 版本</td></tr>
+        <tr><td>vLLM</td><td><span class="pill-sm ps-g">支援</span> --dtype fp8（ROCm）</td></tr>
+        <tr><td>模型訓練</td><td><span class="pill-sm ps-r">不建議</span> 用 NVIDIA</td></tr>
+      </table>
+      <div class="callout amber">推薦工具：<strong>Ollama</strong>（最簡單）或 <strong>llama.cpp hipBLAS 版</strong>。遇到 OOM 但 NVIDIA 同款不會的問題，通常是 ROCm 版本過舊，先嘗試 <code style="font-family:'Inconsolata',monospace;font-size:12px;color:var(--cyan)">rocm-smi</code> 確認驅動版本。</div>
+    </div>
+
+    <!-- 7 量化速查 -->
+    <div class="deep-card">
+      <div class="deep-card-title"><span class="icon">🔢</span>量化格式速查：如何選</div>
+      <table class="deep-table">
+        <tr><th>格式</th><th>大小比</th><th>品質損失</th><th>適用場景</th></tr>
+        <tr><td>Q2_K</td><td>18%</td><td><span class="pill-sm ps-r">高</span></td><td>極限壓縮，不推薦</td></tr>
+        <tr><td>Q3_K_M</td><td>23%</td><td><span class="pill-sm ps-a">明顯</span></td><td>最小化 VRAM，低精度</td></tr>
+        <tr><td><strong>Q4_K_M</strong></td><td>28%</td><td><span class="pill-sm ps-g">極小</span></td><td><strong>✓ 大多數用戶首選</strong></td></tr>
+        <tr><td>Q5_K_M</td><td>35%</td><td><span class="pill-sm ps-g">幾乎無</span></td><td>VRAM 充裕時升級</td></tr>
+        <tr><td>Q8_0</td><td>53%</td><td><span class="pill-sm ps-g">無</span></td><td>最高品質本地版</td></tr>
+        <tr><td>F16</td><td>100%</td><td>基準</td><td>微調 / 研究</td></tr>
+      </table>
+      <div class="callout"><strong>經驗法則：</strong>每 1B 參數在 Q4 下約佔 <strong>0.56 GB</strong>，Q8 下約 <strong>1 GB</strong>。模型文件大小加 1–2 GB 就是你需要的 VRAM 下限。</div>
+    </div>
+
+    <!-- 8 工具選擇 -->
+    <div class="deep-card" style="grid-column:1/-1">
+      <div class="deep-card-title"><span class="icon">🛠️</span>2026 推論工具選擇建議</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:14px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px">
+          <div style="font-size:13px;font-weight:600;color:var(--cyan);margin-bottom:4px">Ollama</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">所有平台入門</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7">一行指令、自動 VRAM 偵測、MLX 後端（Mac 0.19+）</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px">
+          <div style="font-size:13px;font-weight:600;color:var(--cyan);margin-bottom:4px">LM Studio</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Windows / Mac 圖形介面</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7">視覺化 VRAM 監控、MoE 專家分流設定、Flash Attention</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px">
+          <div style="font-size:13px;font-weight:600;color:var(--cyan);margin-bottom:4px">llama.cpp</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">進階調校、低階控制</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7"><code style="font-family:'Inconsolata',monospace;color:var(--mint);font-size:11px">--n-cpu-moe</code>、<code style="font-family:'Inconsolata',monospace;color:var(--mint);font-size:11px">--cache-type-k</code>、最細粒度 VRAM 控制</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px">
+          <div style="font-size:13px;font-weight:600;color:var(--cyan);margin-bottom:4px">mlx-lm</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Mac 最高性能</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7">MLX 原生，Apple Silicon 最快，支援 LoRA 微調</div>
+        </div>
+      </div>
+      <div class="callout warn"><strong>Ollama 多 GPU 限制：</strong>Ollama 不支援模型分割（model parallelism），一個模型只能綁一張 GPU。多 GPU 只能跑不同模型，或同模型多個實例做負載平衡。需要真正多 GPU 模型並行，請改用 llama.cpp 或 vLLM。</div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div>資料來源：HuggingFace · Google DeepMind · Meta AI · Alibaba Qwen · Mistral Docs · llama.cpp · Apple ML Research</div>
+  <div style="margin-top:4px">最後驗證日期：2026 年 4 月 13 日 · 深度技術章節資料來源：LocalLLM.in · HF Blog · arXiv 2504.19874</div>
+  <div style="margin-top:4px">由 Claude Sonnet 4.6 生成並核實 · <a href="https://github.com/">GitHub 來源</a></div>
+</footer>
+</div>
+
+<script>
+/* ── DATA ─────────────────────────────────────────────────────── */
+const TYPES=[
+  {id:'nv', icon:'🖥️', name:'Windows / Linux',badge:'NVIDIA',bCls:'tb-nv',
+   desc:'獨顯 VRAM 決定上限',unit:'GB VRAM',
+   tiers:[
+    {v:6,  l:'6 GB',  ctx:'RTX 3060 Ti / 4060 / 老卡 8GB 需留 OS 空間'},
+    {v:8,  l:'8 GB',  ctx:'RTX 3060 Ti / 3070 / 4060 / 4060 Ti 8G'},
+    {v:12, l:'12 GB', ctx:'RTX 3060 / 4070 / 4070 Super / 5070'},
+    {v:16, l:'16 GB', ctx:'RTX 4060 Ti 16G / 4070 Ti S / 4080 / 5060 Ti / 5070 Ti / 5080'},
+    {v:24, l:'24 GB', ctx:'RTX 3090 / 4090'},
+    {v:32, l:'32 GB', ctx:'RTX 5090'},
+  ]},
+  {id:'amd',icon:'🔴', name:'Windows / Linux',badge:'AMD',bCls:'tb-amd',
+   desc:'ROCm 支援 RX 6000/7000/9000',unit:'GB VRAM',
+   tiers:[
+    {v:8,  l:'8 GB',  ctx:'RX 6600 / 6650 XT / 7600'},
+    {v:12, l:'12 GB', ctx:'RX 6700 XT / 6750 XT / 7700'},
+    {v:16, l:'16 GB', ctx:'RX 6800 / 6900 XT / 7800 XT / 7900 GRE / 9070 / 9070 XT'},
+    {v:20, l:'20 GB', ctx:'RX 7900 XT'},
+    {v:24, l:'24 GB', ctx:'RX 7900 XTX'},
+  ]},
+  {id:'mac',icon:'🍎', name:'Mac Mini',badge:'Apple Silicon',bCls:'tb-mac',
+   desc:'統一記憶體 CPU＋GPU 共享',unit:'GB 統一記憶體',
+   tiers:[
+    {v:8,  l:'8 GB',  ctx:'Mac Mini M2（基本款 8GB）'},
+    {v:16, l:'16 GB', ctx:'Mac Mini M2（升級款）/ M4（基本款）/ M2 Pro（基本款）'},
+    {v:24, l:'24 GB', ctx:'Mac Mini M2（最高配 24GB）/ M4（升級款）/ M4 Pro（基本款）'},
+    {v:32, l:'32 GB', ctx:'Mac Mini M2 Pro（升級款 32GB，M2 Pro 最高配置）'},
+    {v:48, l:'48 GB', ctx:'Mac Mini M4 Pro（最高配 48GB，Mac Mini 最大可用記憶體）'},
+  ]},
+];
+
+const MODELS=[
+  {name:'Gemma 4 E4B',          series:'Google',  arch:'Dense edge',   params:'4B eff.',     mem:6,  memL:'6–10 GB',    ctx:'128K',lic:'Apache 2.0',score:68,tier:'a',
+   tags:['音訊輸入','多模態','邊緣裝置'],tagC:['tg','tc','ta'],
+   note:'支援文字/圖片/影片/音訊四種輸入。⚠ PLE 架構使 Ollama 下載檔約 9.6 GB，最低需 6 GB VRAM 或 8 GB 統一記憶體；4 GB 無法載入。適合 NAS、樹莓派等邊緣場景。'},
+  {name:'Qwen 3.5 9B',          series:'Alibaba', arch:'Dense',        params:'9B',          mem:8,  memL:'8–12 GB',    ctx:'256K',lic:'Apache 2.0',score:82,tier:'a',
+   tags:['繁中優秀','多模態','256K'],tagC:['tg','tc','tc'],
+   note:'在 GPQA Diamond 擊敗規模 13 倍的 GPT-OSS-120B；原生圖片與影片輸入（early fusion，非外掛模組）；8–12GB 顯卡的最強日常首選。Q4_K_M 約 5.8 GB，建議最低 8 GB VRAM 以留足 KV Cache 空間。'},
+  {name:'DeepSeek R1-Distill 7B',series:'DeepSeek',arch:'Dense distill',params:'7B',         mem:6,  memL:'6–8 GB',    ctx:'128K',lic:'MIT',       score:70,tier:'a',
+   tags:['思考鏈','數學推理','MIT'],tagC:['tp','tp','ta'],
+   note:'將 671B R1 的思考鏈能力蒸餾至 7B；邏輯推理與程式題遠超同參數普通模型。AMD 建議用 llama.cpp（hipBLAS）。'},
+  {name:'Phi-4 Mini',           series:'Microsoft',arch:'Dense',       params:'15B',         mem:12, memL:'12–16 GB',  ctx:'128K',lic:'MIT',       score:74,tier:'b',
+   tags:['STEM 強項','端側旗艦'],tagC:['tp','ta'],
+   note:'微軟端側旗艦；數學與科學基準成績超越多款數倍體積的模型；12GB 顯卡學術輔助首選。'},
+  {name:'DeepSeek R1-Distill 14B',series:'DeepSeek',arch:'Dense distill',params:'14B',       mem:12, memL:'12–14 GB',  ctx:'128K',lic:'MIT',       score:78,tier:'b',
+   tags:['CoT 推理','程式碼','MIT'],tagC:['tp','tc','ta'],
+   note:'R1 蒸餾系列甜蜜點；完整思考步驟輸出；AMD RX 7800 XT 可流暢執行。Mac Mini M2 16GB 可執行（10.4 GB 可用），KV Cache 餘裕僅 ~2 GB，建議限制 context ≤ 8K 避免 swap。'},
+  {name:'Gemma 4 26B A4B',      series:'Google',  arch:'MoE',          params:'26B/3.8B act',mem:20, memL:'20–24 GB（建議 32 GB）',  ctx:'256K',lic:'Apache 2.0',score:87,tier:'b',
+   tags:['開源 #6','多模態','256K ctx'],tagC:['tp','tc','tc'],
+   note:'開源排行全球第 6。⚠ Q4 靜態權重 ~18 GB，加 KV Cache 需 20–24 GB；16 GB 顯卡會大量 swap（實測 ~2 tok/s）。KV Cache 用量高於 Qwen 3.5，建議 32 GB 以上最佳。Gemma 4 發布僅數週，llama.cpp M4 有速度回歸 bug（issue #21655）待修。'},
+  {name:'Qwen 3.5 35B IQ3_XXS', series:'Alibaba', arch:'MoE 超壓縮',    params:'35B/3B act',  mem:14, memL:'14–16 GB (IQ3_XXS)',ctx:'256K',lic:'Apache 2.0',score:81,tier:'b',
+   tags:['指令遵循','Agent','超壓縮'],tagC:['tg','tp','ta'],
+   note:'⚠ 此為 IQ3_XXS 超壓縮格式（~13 GB），非標準 Q4（需 24 GB）。標準 Q4_K_M 在 16 GB 顯卡完全無法執行。品質明顯低於 Q4，僅適合記憶體嚴格受限場景。需用 llama.cpp 或 LM Studio，Ollama 目前不支援 Qwen 3.5 多模態 GGUF。'},
+  {name:'Qwen 3.5 35B-A3B',     series:'Alibaba', arch:'MoE',          params:'35B/3B act',  mem:22, memL:'22–24 GB',   ctx:'256K',lic:'Apache 2.0',score:88,tier:'c',
+   tags:['指令遵循 #1','函數呼叫','Agent'],tagC:['tg','tc','tp'],
+   note:'函數呼叫 BFCL-V4 全開源第一（72.2%），超越 GPT-5-mini 30%；RTX 3090 / 4090 / M2 Pro 32GB 可全精度執行。⚠ RX 7900 XT 20GB 偏緊（Q4 需 ~21 GB），建議 RTX 3090/4090 或 24 GB。需用 llama.cpp 或 LM Studio，Ollama 目前不支援 Qwen 3.5 多模態 GGUF。'},
+  {name:'DeepSeek R1-Distill 32B',series:'DeepSeek',arch:'Dense distill',params:'32B',       mem:20, memL:'20–24 GB',  ctx:'128K',lic:'MIT',       score:85,tier:'c',
+   tags:['深度推理','科研','MIT'],tagC:['tp','tc','ta'],
+   note:'R1 蒸餾最強版；完整 CoT 輸出，適合複雜多步驟數學與科研類提問；RTX 3090/4090（24GB）流暢執行。⚠ Mac M2 Pro 32GB 有效空間 ~20GB，Q4 模型 ~18GB 後 KV Cache 幾乎為零，建議嚴格限制 context ≤ 4K。'},
+  {name:'Gemma 4 31B IT',       series:'Google',  arch:'Dense',        params:'31B',         mem:24, memL:'24 GB（NVIDIA）/ 48 GB UM（Mac）',     ctx:'256K',lic:'Apache 2.0',score:93,tier:'c',
+   tags:['開源 #3','AIME 89%','內建思考'],tagC:['tp','tg','tp'],
+   note:'目前消費級可跑的最強開源模型。AIME 2026 數學 89.2%、LiveCodeBench 80%。NVIDIA：RTX 3090 / 4090 / RX 7900 XTX（24 GB）均可。⚠ Mac：24 GB 統一記憶體可用空間僅 ~15 GB，無法裝入 20 GB 模型；需 M4 Pro 48GB 或以上才可穩定執行。'},
+  {name:'Qwen 3.5 122B-A10B',   series:'Alibaba', arch:'MoE',          params:'122B/10B act',mem:72, memL:'72 GB+ UM（Mac Studio Ultra）',  ctx:'256K',lic:'Apache 2.0',score:91,tier:'d',
+   tags:['工作站等級','函數呼叫','256K'],tagC:['ta','ta','tc'],
+   note:'⚠ Q4 檔案大小約 72 GB，需 Mac Studio M2/M3 Ultra（192 GB）才可執行。Mac Mini 系列（最高 48 GB）全部不夠用。函數呼叫得分 72.2%，是 GPT-5-mini 的 1.3 倍；適合需要極高品質的工作站部署。'},
+];
+
+/* ── STATE ───────────────────────────────────────────────────── */
+let selType=null;
+
+/* ── INIT ────────────────────────────────────────────────────── */
+(function(){
+  const g=document.getElementById('type-grid');
+  TYPES.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='type-btn';b.id='tb-'+t.id;
+    b.innerHTML=`<div class="type-icon">${t.icon}</div>
+      <div class="type-name">${t.name}</div>
+      <span class="type-badge ${t.bCls}">${t.badge}</span>
+      <div class="type-desc">${t.desc}</div>`;
+    b.onclick=()=>selectType(t.id);
+    g.appendChild(b);
+  });
+  buildTable();
+})();
+
+/* ── SELECT TYPE ─────────────────────────────────────────────── */
+function selectType(id){
+  selType=id;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('tb-'+id).classList.add('sel');
+  document.getElementById('sn1').classList.add('done');
+
+  const t=TYPES.find(x=>x.id===id);
+  const isMac=id==='mac';
+
+  document.getElementById('step2-label').textContent=isMac?'統一記憶體大小':'VRAM 大小';
+  document.getElementById('mem-intro').textContent=isMac
+    ?'Mac 統一記憶體由 CPU 與 GPU 共享。系統需預留約 35%，下方以 65% 規則估算實際可用量。同等 GB 數字下，Mac 可用空間比獨顯少；優勢在於同預算可購得更大容量。'
+    :'拖動滑桿選擇顯卡 VRAM 大小。';
+  document.getElementById('mem-unit').textContent=' '+t.unit;
+
+  const sl=document.getElementById('mem-slider');
+  sl.max=t.tiers.length-1;
+  sl.value=Math.min(1,t.tiers.length-1);
+
+  document.getElementById('mem-labels').innerHTML=
+    t.tiers.map(x=>`<span>${x.l}</span>`).join('');
+
+  document.getElementById('mem-area').classList.add('show');
+  document.getElementById('sn2').classList.remove('done');
+  onSlide();
+}
+
+/* ── SLIDE ───────────────────────────────────────────────────── */
+function onSlide(){
+  if(!selType)return;
+  const t=TYPES.find(x=>x.id===selType);
+  const idx=parseInt(document.getElementById('mem-slider').value);
+  const tier=t.tiers[idx];
+  document.getElementById('mem-val').textContent=tier.v;
+  document.getElementById('mem-ctx').textContent=tier.ctx;
+  document.getElementById('sn2').classList.add('done');
+  renderResult(tier.v,selType);
+}
+
+/* ── RENDER RESULT ───────────────────────────────────────────── */
+function renderResult(mem,typeId){
+  const isAmd=typeId==='amd';
+  const isMac=typeId==='mac';
+
+  // Mac 統一記憶體套用 65% 規則：系統、KV Cache、執行期約佔 35%
+  const effectiveMem = isMac ? Math.floor(mem * 0.65) : mem;
+
+  const recs=MODELS.filter(m=>m.mem<=effectiveMem).sort((a,b)=>b.mem-a.mem||b.score-a.score);
+  const wrap=document.getElementById('result-area');
+
+  const t=TYPES.find(x=>x.id===typeId);
+  const idx=parseInt(document.getElementById('mem-slider').value);
+  const chipLabel=`${t.tiers[idx].l} ${t.unit.replace('GB ','')}`;
+
+  const usableNote=isMac?`（65% 規則：實際可用 ~${effectiveMem} GB）`:'';
+
+  const warnHtml=effectiveMem<=8
+    ?`<div class="info-box info-warn show">⚠ ${effectiveMem} GB VRAM 空間偏小，建議使用 Q4_K_M 量化格式，並關閉其他 GPU 佔用程式（遊戲、影片編輯軟體等）。推理速度較慢，適合輕量日常對話；context 建議限制在 4K 以內。</div>`:'';
+  const amdTip=isAmd
+    ?`<div class="info-box info-tip show">ℹ AMD 顯卡透過 <strong>Ollama</strong> 或 <strong>llama.cpp（hipBLAS）</strong> 執行。ROCm 支援 RX 6000/7000/9000 系列。部分模型需 CPU offload，速度略低於同 VRAM 的 NVIDIA。</div>`:'';
+  const macTip=isMac
+    ?`<div class="info-box info-tip show">ℹ Mac 統一記憶體優勢是<strong>容量</strong>（同預算能裝更大模型）與<strong>低功耗</strong>，非速度（M2 Pro 頻寬 200 GB/s，RTX 4090 為 1,008 GB/s）。建議透過 <strong>Ollama（32GB+ 可啟用 MLX 加速）</strong> 或 <strong>LM Studio</strong> 執行。</div>`:'';
+
+  if(recs.length===0){
+    const emptyMsg=isMac
+      ?`此統一記憶體容量在扣除系統開銷（35%）後，有效可用約 ${effectiveMem} GB，不足以執行清單內的模型。建議升級至 16GB 或以上，或考慮 Gemma 4 E2B（2.3B）等更小型模型。`
+      :`此 VRAM 不足以執行清單內的任何模型。建議升級至 6GB 以上顯卡。`;
+    wrap.innerHTML=`${amdTip}${macTip}<div class="result-none">${emptyMsg}</div>`;
+    return;
+  }
+
+  const cards=recs.map((m,i)=>{
+    const rnk=i===0?'★ 首推':i===1?'2nd':i===2?'3rd':`${i+1}th`;
+    const rCls=`r${Math.min(i+1,3)}`;
+    const fc=m.score>=90?'#6effa8':m.score>=80?'#5de8ff':'#c4aaff';
+    const tags=m.tags.map((t,ti)=>`<span class="tag ${m.tagC[ti]}">${t}</span>`).join('');
+    const vMap={Google:'vs-google',Alibaba:'vs-alibaba',DeepSeek:'vs-deepseek',Microsoft:'vs-ms'};
+    const vCls=vMap[m.series]||'';
+    const vDotColor={Google:'#4ecb8a',Alibaba:'#ff9f6a',DeepSeek:'#5de8ff',Microsoft:'#7ab8f5'}[m.series]||'var(--text3)';
+    return `<div class="m-card ${rCls} ${vCls}">
+      ${i===0?'<div class="top-glow"></div>':''}
+      <div class="mc-top">
+        <div>
+          <div class="mc-rank${i===0?' gold':''}">${rnk}</div>
+          <div class="m-name">${m.name}</div>
+          <div class="m-sub"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${vDotColor};margin-right:6px;vertical-align:middle;flex-shrink:0"></span>${m.series} · ${m.arch}</div>
+        </div>
+        <div class="mc-right">
+          <div class="mc-vram">需 ${m.memL}</div>
+          <div class="score-row">
+            <div class="score-bg"><div class="score-fill" style="width:${m.score}%;background:${fc}"></div></div>
+            <span class="score-val">${m.score}</span>
+          </div>
+        </div>
+      </div>
+      <div class="m-tags">${tags}</div>
+      <div class="m-note">${m.note}</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML=`
+    ${warnHtml}${amdTip}${macTip}
+    <div class="result-banner">
+      <span class="r-chip">${chipLabel}</span>
+      <span class="r-label">共 ${recs.length} 款可執行模型${usableNote}</span>
+    </div>
+    <div class="cards">${cards}</div>`;
+}
+
+/* ── FULL TABLE ──────────────────────────────────────────────── */
+function buildTable(){
+  const tb=document.getElementById('full-tbody');
+  const all=[...MODELS].sort((a,b)=>a.mem-b.mem||b.score-a.score);
+  const tierMap={a:['tpa','▲ 6–8 GB'],b:['tpb','◆ 12–20 GB'],c:['tpc','● 20–24 GB'],d:['tpd','★ 工作站']};
+  const sc=s=>s>=90?'var(--mint)':s>=80?'var(--cyan)':'var(--purple)';
+  const dc=m=>m.mem<=8?'var(--mint2)':m.mem<=16?'var(--cyan)':m.mem<=24?'var(--purple)':'var(--amber)';
+  all.forEach(m=>{
+    const [pc,pl]=tierMap[m.tier];
+    tb.innerHTML+=`<tr>
+      <td><div style="display:flex;align-items:center;gap:9px">
+        <div style="width:6px;height:6px;border-radius:50%;background:${dc(m)};flex-shrink:0"></div>
+        <div><div class="td-name">${m.name}</div><div class="td-sub">${m.series}</div></div>
+      </div></td>
+      <td class="td-mono">${m.arch}</td>
+      <td class="td-mono">${m.params}</td>
+      <td class="td-vram">${m.memL}</td>
+      <td class="td-mono">${m.ctx}</td>
+      <td class="td-mono">${m.lic}</td>
+      <td class="td-score" style="color:${sc(m.score)}">${m.score}</td>
+      <td><span class="tier-pill ${pc}">${pl}</span></td>
+    </tr>`;
+  });
+}
+
+/* ── A11Y ────────────────────────────────────────────────────── */
+function tog(cls,id){
+  document.body.classList.toggle(cls);
+  document.getElementById(id).classList.toggle('on');
+}
+</script>
+</body>
+</html>
